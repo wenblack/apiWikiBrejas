@@ -61,6 +61,24 @@ async function bootstrap() {
     return { name, details, reviews };
   });
 
+  //Get user Review
+  fastify.get("/reviews/:email", async (request, reply) => {
+    const reviewParams = z.object({
+      email: z.string()
+    });
+    const { email } = reviewParams.parse(request.params);
+    const user = await prisma.user.findUnique({
+      where: {
+        emai: email
+      }
+    })
+    const reviews = await prisma.review.findMany({
+      where: {
+        userId: user?.id
+      }
+    })
+    return { email, reviews };
+  });
 
   //Post Example
   fastify.post("/pools", async (request, reply) => {
