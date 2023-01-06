@@ -2,85 +2,109 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
-import ShortUniqueId from "short-unique-id";
-("short-unique-id");
 
 //Showing in the log All Queries
 const prisma = new PrismaClient({
-  log: ["query"]
+  log: ["query"],
 });
-
 
 async function bootstrap() {
   const fastify = Fastify({
-    logger: true
+    logger: true,
   });
 
   await fastify.register(cors, {
-    origin: true
+    origin: true,
   });
 
-  //Get All Beers
+  //Get Beers (Alphabetical Order)
   fastify.get("/beers", async () => {
-    const count = await prisma.beer.count()
-    const beers = await prisma.beer.findMany()
+    const count = await prisma.beer.count();
+    const beers = await prisma.beer.findMany({
+      orderBy: {
+        name: "asc",
+      },
+    });
     return { count, beers };
   });
 
   //Get All Reviews
   fastify.get("/reviews", async () => {
-    const reviews = await prisma.review.findMany()
-    const count = await prisma.review.count()
+    const reviews = await prisma.review.findMany();
+    const count = await prisma.review.count();
     return { count, reviews };
   });
 
   //Get All User
   fastify.get("/users", async () => {
     const count = await prisma.user.count();
-    const users = await prisma.user.findMany()
+    const users = await prisma.user.findMany();
     return { count, users };
   });
 
-  // Get Beers Detais
-  fastify.get("/beer/:name", async (request, reply) => {
+  // Get Beer Detail
+  fastify.get("/beer/:id", async (request, reply) => {
     const createBeerParams = z.object({
-      name: z.string()
+      id: z.string(),
     });
-    const { name } = createBeerParams.parse(request.params);
+    const { id } = createBeerParams.parse(request.params);
     const details = await prisma.beer.findFirst({
       where: {
-        name: name
-      }
-    })
+        id: id,
+      },
+    });
     const reviews = await prisma.review.findMany({
       where: {
-        beerId: details?.id
-      }
-    }
-    )
-    return { name, details, reviews };
+        beerId: details?.id,
+      },
+    });
+    const totalReviews = reviews.length
+    return {details,totalReviews, reviews};
   });
 
-  //Get user Review
-  fastify.get("/reviews/:email", async (request, reply) => {
-    const reviewParams = z.object({
-      email: z.string()
+  //Get Beer by style
+  fastify.get("/beers?style", async (request, reply) => {
+    const createBeerParams = z.object({
+      style: z.string(),
     });
-    const { email } = reviewParams.parse(request.params);
+    const { style } = createBeerParams.parse(request.params);
+    const beers = await prisma.beer.findMany({
+      where: {
+        style:style
+      },
+    });
+  
+    const totalReviews = beers.length
+    return {totalReviews, beers};
+  });
+  
+  //Get user Review
+  fastify.get("/reviews/:id", async (request, reply) => {
+    const reviewParams = z.object({
+      id: z.string(),
+    });
+    const { id } = reviewParams.parse(request.params);
     const user = await prisma.user.findUnique({
       where: {
-        emai: email
-      }
-    })
+        id: id,
+      },
+    });
+    const email = user?.emai
+    const userName = user?.name
     const reviews = await prisma.review.findMany({
       where: {
-        userId: user?.id
-      }
-    })
-    return { email, reviews };
+        userId: user?.id,
+      },
+    });
+    return { id, userName, email, reviews };
   });
 
-  //Post Example
+  //Return
+  await fastify.listen({ port: 3333 /*host: "0.0.0.0"*/ });
+}
+bootstrap();
+
+/*Post Example
   fastify.post("/pools", async (request, reply) => {
     const createPoolBody = z.object({
       title: z.string()
@@ -97,9 +121,5 @@ async function bootstrap() {
     });
 
     return reply.status(201).send({ code });
-  });
-
-  //Return
-  await fastify.listen({ port: 3333 /*host: "0.0.0.0"*/ });
-}
-bootstrap();
+  })
+*/
