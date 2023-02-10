@@ -59,7 +59,23 @@ async function bootstrap() {
       },
     });
     const totalReviews = reviews.length
-    return {details,totalReviews, reviews};
+    return { details, totalReviews, reviews };
+  });
+
+  // Get user info
+  fastify.get("/users/:user", async (request, reply) => {
+    const createUserParams = z.object({
+      user: z.string(),
+    });
+    const { user } = createUserParams.parse(request.params);
+    const userName = await prisma.user.findFirst({
+      where: {
+        emai: user
+      },
+    });
+
+
+    return { userName };
   });
 
   //Get Beer by style
@@ -70,14 +86,14 @@ async function bootstrap() {
     const { style } = createBeerParams.parse(request.params);
     const beers = await prisma.beer.findMany({
       where: {
-        style:style
+        style: style
       },
     });
-  
+
     const totalReviews = beers.length
-    return {totalReviews, beers};
+    return { totalReviews, beers };
   });
-  
+
   //Get user Review
   fastify.get("/reviews/:id", async (request, reply) => {
     const reviewParams = z.object({
